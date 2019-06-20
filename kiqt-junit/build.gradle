@@ -1,0 +1,45 @@
+import com.github.spotbugs.SpotBugsTask
+
+plugins {
+    id 'java'
+    id 'checkstyle'
+    id 'jacoco'
+    id 'com.github.spotbugs' version '2.0.0'
+}
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':kiqt-core')
+
+    // would like to get these to
+    compile 'junit:junit:4.12'
+    compile 'org.awaitility:awaitility:3.0.0'
+
+    testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'
+    testCompile 'org.mockito:mockito-all:1.10.19'
+    testCompile 'com.google.code.findbugs:annotations:3.0.1'
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.85
+            }
+        }
+    }
+}
+
+check.dependsOn(jacocoTestCoverageVerification)
+
+tasks.withType(SpotBugsTask) {
+    reports {
+        xml.enabled false
+        html.enabled true
+    }
+}

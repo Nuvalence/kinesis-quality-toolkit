@@ -1,0 +1,5 @@
+rootProject.name = 'kinesis-quality-toolkit'
+
+include 'kiqt-core'
+include 'kiqt-junit'
+include 'samples'

@@ -22,7 +22,7 @@ A clear and concise description of what you expected to happen.
 
 **Runtime (please complete the following information):**
  - Java version: 
- - KQT version: 
+ - KiQT version: 
 
 **Additional context**
 Add any other context about the problem here.

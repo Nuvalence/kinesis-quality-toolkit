@@ -1,0 +1,139 @@
+Description: SampleKinesisPipeline
+Parameters: {}
+Resources:
+  AnalyticsApplication:
+    Type: 'AWS::KinesisAnalytics::Application'
+    Properties:
+      ApplicationName: !Ref AWS::StackName
+      ApplicationDescription: Sample application
+      ApplicationCode: >
+        CREATE OR REPLACE STREAM "OUTPUT_STREAM" (UTC_TIME BIGINT NOT NULL, POSTAL_CODE VARCHAR(10) NOT NULL, MINIMUM DECIMAL(18,6) NOT NULL, AVERAGE DECIMAL(18,6) NOT NULL, MAXIMUM DECIMAL(18,6) NOT NULL);
+        CREATE OR REPLACE PUMP "TEMPERATURE_PUMP" AS INSERT INTO "OUTPUT_STREAM"
+        SELECT STREAM
+            UTC_TIME, POSTAL_CODE,
+            min(TEMPERATURE) over LAST_MINUTE AS MINIMUM,
+            avg(TEMPERATURE) over LAST_MINUTE as AVERAGE,
+            max(TEMPERATURE) over LAST_MINUTE as MAXIMUM
+        FROM "INPUT_STREAM_001"
+        WINDOW LAST_MINUTE AS (
+           PARTITION BY UTC_TIME, POSTAL_CODE
+           RANGE INTERVAL '1' MINUTE PRECEDING);
+      Inputs:
+        - NamePrefix: INPUT_STREAM
+          InputSchema:
+            RecordColumns:
+              - Name: UTC_TIME
+                SqlType: BIGINT
+                Mapping: $.utcTime
+              - Name: POSTAL_CODE
+                SqlType: VARCHAR(5)
+                Mapping: $.postalCode
+              - Name: DEVICE_ID
+                SqlType: VARCHAR(36)
+                Mapping: $.deviceId
+              - Name: TEMPERATURE
+                SqlType: DECIMAL(18,6)
+                Mapping: $.value
+            RecordFormat:
+              RecordFormatType: JSON
+              MappingParameters:
+                JSONMappingParameters:
+                  RecordRowPath: $
+          KinesisStreamsInput:
+            ResourceARN: !GetAtt InputStream.Arn
+            RoleARN: !GetAtt ReadFromInputStreamRole.Arn
+  OutputStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      ShardCount: 1
+  ErrorStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      ShardCount: 1
+  InputStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      ShardCount: 1
+  WriteToOutputStreamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - kinesisanalytics.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: write
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kinesis:DescribeStream'
+                  - 'kinesis:PutRecord'
+                  - 'kinesis:PutRecords'
+                Resource:
+                  - !GetAtt OutputStream.Arn
+                  - !GetAtt ErrorStream.Arn
+  ReadFromInputStreamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - kinesisanalytics.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: read
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kinesis:DescribeStream'
+                  - 'kinesis:GetShardIterator'
+                  - 'kinesis:GetRecords'
+                Resource: !GetAtt InputStream.Arn
+  ApplicationOutput:
+    Type: 'AWS::KinesisAnalytics::ApplicationOutput'
+    Properties:
+      ApplicationName: !Ref AnalyticsApplication
+      Output:
+        Name: OUTPUT_STREAM
+        DestinationSchema:
+          RecordFormatType: JSON
+        KinesisStreamsOutput:
+          ResourceARN: !GetAtt OutputStream.Arn
+          RoleARN: !GetAtt WriteToOutputStreamRole.Arn
+    DependsOn:
+      - AnalyticsApplication
+      - WriteToOutputStreamRole
+      - OutputStream
+  ApplicationErrorOutput:
+    Type: 'AWS::KinesisAnalytics::ApplicationOutput'
+    Properties:
+      ApplicationName: !Ref AnalyticsApplication
+      Output:
+        Name: error_stream
+        DestinationSchema:
+          RecordFormatType: JSON
+        KinesisStreamsOutput:
+          ResourceARN: !GetAtt ErrorStream.Arn
+          RoleARN: !GetAtt WriteToOutputStreamRole.Arn
+    DependsOn:
+      - AnalyticsApplication
+      - WriteToOutputStreamRole
+      - ErrorStream
+Outputs:
+  ApplicationName:
+    Value: !Ref AnalyticsApplication
