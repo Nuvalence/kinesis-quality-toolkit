@@ -1,0 +1,85 @@
+import software.amazon.awssdk.services.cloudformation.CloudFormationClient
+import software.amazon.awssdk.services.cloudformation.model.CreateStackRequest
+import software.amazon.awssdk.services.cloudformation.model.DeleteStackRequest
+import software.amazon.awssdk.services.cloudformation.model.DescribeStacksRequest
+import software.amazon.awssdk.services.cloudformation.model.Stack
+
+import static software.amazon.awssdk.services.cloudformation.model.StackStatus.CREATE_COMPLETE
+import static software.amazon.awssdk.services.cloudformation.model.StackStatus.CREATE_IN_PROGRESS
+
+buildscript {
+    repositories {
+        mavenCentral();
+    }
+    dependencies {
+        classpath 'software.amazon.awssdk:cloudformation:2.5.60'
+    }
+}
+
+def sample = file("${project.projectDir}/src/integrationTest/resources/SampleApplication.yml")
+ext.stackName = "${System.getProperty("user.name")}-SampleApplication"
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+        }
+    }
+}
+
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'build'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'io.nuvalence.sample-application-name', stackName
+}
+
+task createSampleApplication {
+    doLast {
+        def client = CloudFormationClient.create()
+        def name = stackName
+
+        // create stack
+        CreateStackRequest request = CreateStackRequest.builder()
+                .stackName(name)
+                .templateBody(sample.text)
+                .capabilities(software.amazon.awssdk.services.cloudformation.model.Capability.CAPABILITY_IAM)
+                .build()
+        client.createStack(request);
+
+        // wait for creation
+        10.times {
+            Stack stack = client.describeStacks(DescribeStacksRequest.builder().stackName(name).build()).stacks().first()
+            switch (stack.stackStatus()) {
+                case CREATE_IN_PROGRESS:
+                    System.out.println("$name is still creating");
+                    break;
+                case CREATE_COMPLETE: return;
+                default: throw new GradleException("$name in undesired state: ${stack.stackStatus()}");
+            }
+
+            Thread.sleep(30000)
+        }
+    }
+}
+
+integrationTest.dependsOn(createSampleApplication)
+
+task deleteSampleApplication {
+    dependsOn(createSampleApplication)
+    mustRunAfter(createSampleApplication, integrationTest)
+    doLast {
+        DeleteStackRequest request = DeleteStackRequest.builder().stackName(stackName).build()
+        CloudFormationClient.create().deleteStack(request)
+    }
+}
+
+createSampleApplication.finalizedBy(deleteSampleApplication)
+integrationTest.finalizedBy(deleteSampleApplication)
