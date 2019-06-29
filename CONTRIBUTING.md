@@ -40,4 +40,8 @@ To delete the sample application
 ```
 
 Note that the application finishes deleting asynchronously, if you immediately try to recreate the application
-you may see an error indicating the application still exists. 
+you may see an error indicating the application still exists.
+
+## Publishing
+
+All pull requests should be versioned according to semantic versioning for publication.

@@ -5,7 +5,12 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.spotbugs' version '2.0.0'
+    id 'maven-publish'
 }
+
+description = "KiQT (the Kinesis Quality Toolkit) functional test setup and verification using the JUnit framework."
+
+apply from: "${project.rootDir}/gradle/publishing.gradle"
 
 sourceCompatibility = 1.8
 

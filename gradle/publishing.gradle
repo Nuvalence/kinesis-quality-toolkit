@@ -1,0 +1,61 @@
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    from javadoc.destinationDir
+}
+
+def repositoryUrl = project.version.toString().endsWith("-SNAPSHOT")
+        ? "https://oss.sonatype.org/content/repositories/snapshots"
+        : "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+
+publishing {
+    repositories {
+        maven {
+            url repositoryUrl
+            credentials {
+                username project.hasProperty('sonatypeUser') ? project.property('sonatypeUser') : ''
+                password project.hasProperty('sonatypePassword') ? project.property('sonatypePassword') : ''
+            }
+        }
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifact(sourceJar) {
+                classifier = 'sources'
+            }
+
+            artifact(javadocJar) {
+                classifier = 'javadoc'
+            }
+
+            pom {
+                description = project.description
+                url = 'https://github.com/Nuvalence/kinesis-quality-toolkit'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'lnavarette'
+                        name = 'Linda Navarette'
+                        email = 'linda@nuvalence.io'
+                        organization = 'Nuvalence'
+                        organizationUrl = 'https://nuvalence.io/'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/Nuvalence/kinesis-quality-toolkit'
+                    connection = 'scm:git:git://github.com/Nuvalence/kinesis-quality-toolkit.git'
+                    developerConnection = 'scm:git:ssh://git@github.com:Nuvalence/kinesis-quality-toolkit.git'
+                }
+            }
+        }
+    }
+}
