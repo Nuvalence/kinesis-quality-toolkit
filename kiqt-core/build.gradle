@@ -5,7 +5,12 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.spotbugs' version '2.0.0'
+    id 'maven-publish'
 }
+
+description = "Core components for KiQT (the Kinesis Quality Toolkit). Contains all logic for composing the pipeline IO and application management."
+
+apply from: "${project.rootDir}/gradle/publishing.gradle"
 
 sourceCompatibility = 1.8
 

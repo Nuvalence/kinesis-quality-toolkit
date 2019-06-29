@@ -41,9 +41,6 @@ For more sample code and use cases, [see the samples](samples/).
 
 ## Roadmap
 
-### Publishing
-We're working on setting up processes for publishing our artifacts to Maven Central.
-
 ### Supported Destinations
 Currently only Kinesis Streams are supported as inputs and outputs, with the other integrations to come.
 Following the project structure decribed above, our highest priorities are creating projects:
